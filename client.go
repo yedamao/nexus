@@ -1,9 +1,12 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/nexus-im/nexus/store/session"
 
 	"github.com/gorilla/websocket"
 )
@@ -149,8 +152,12 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	claims, err := authenticator.ValidateToken(tokenString)
+	sess, err := sessionStore.GetByToken(r.Context(), tokenString)
 	if err != nil {
+		if errors.Is(err, session.ErrSessionExpired) || errors.Is(err, session.ErrSessionNotFound) {
+			http.Error(w, "Unauthorized: invalid token", http.StatusUnauthorized)
+			return
+		}
 		http.Error(w, "Unauthorized: invalid token", http.StatusUnauthorized)
 		return
 	}
@@ -162,7 +169,11 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Client connected: %s (%s)", claims.Username, claims.UserID)
+	username := "unknown"
+	if u, err := userStore.GetByID(r.Context(), sess.UserID); err == nil {
+		username = u.Username
+	}
+	log.Printf("Client connected: %s (%s)", username, sess.UserID)
 
 	// Register new client
 	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}

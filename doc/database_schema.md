@@ -31,6 +31,35 @@ CREATE TABLE users (
 CREATE INDEX idx_users_username ON users(username);
 ```
 
+## Sessions Table
+
+The `sessions` table stores authentication sessions for active logins.
+
+**Table Name:** `sessions`
+
+| Column Name | Data Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `UUID` | **PK**, Not Null | Unique identifier for the session. |
+| `user_id` | `UUID` | **FK**, Not Null | References `users.id`. |
+| `token` | `TEXT` | **Unique**, Not Null | Opaque session token. |
+| `created_at` | `TIMESTAMP` | Default: `NOW()` | When the session was created. |
+| `expires_at` | `TIMESTAMP` | Not Null | When the session expires. |
+
+### SQL Definition (PostgreSQL Example)
+
+```sql
+CREATE TABLE sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE INDEX idx_sessions_token ON sessions(token);
+CREATE INDEX idx_sessions_user_id ON sessions(user_id);
+```
+
 ### Go Struct Mapping (GORM)
 
 If using GORM (Go Object Relational Mapper), the model would look like this:
